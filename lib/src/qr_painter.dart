@@ -169,10 +169,13 @@ class QrPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // if the widget has a zero size side then we cannot continue painting.
     if (size.shortestSide == 0) {
-      print("[QR] WARN: width or height is zero. You should set a 'size' value "
+      print("[QR] WARN: width or height is zero. You should set a 'size' value"
           "or nest this painter in a Widget that defines a non-zero size");
       return;
     }
+
+    final backgroundPaint = Paint()..color = Color(0xFFFFFFFF)..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
 
     final paintMetrics = _PaintMetrics(
       containerSize: size.shortestSide,
@@ -188,13 +191,13 @@ class QrPainter extends CustomPainter {
         FinderPatternPosition.topRight, canvas, paintMetrics);
 
     // DEBUG: draw the inner content boundary
-//    final paint = Paint()..style = ui.PaintingStyle.stroke;
-//    paint.strokeWidth = 1;
-//    paint.color = const Color(0x55222222);
-//    canvas.drawRect(
-//        Rect.fromLTWH(paintMetrics.inset, paintMetrics.inset,
-//            paintMetrics.innerContentSize, paintMetrics.innerContentSize),
-//        paint);
+    /*final paint = Paint()..style = ui.PaintingStyle.stroke;
+    paint.strokeWidth = 1;
+    paint.color = const Color(0x55222222);
+    canvas.drawRect(
+      Rect.fromLTWH(paintMetrics.inset, paintMetrics.inset,
+          paintMetrics.innerContentSize, paintMetrics.innerContentSize),
+      paint);*/
 
     double left;
     double top;
@@ -211,6 +214,15 @@ class QrPainter extends CustomPainter {
       emptyPixelPaint = _paintCache.firstPaint(QrCodeElement.codePixelEmpty);
       emptyPixelPaint!.color = emptyColor!;
     }
+    // DEBUG: draw the embedded image's boundary
+    /*final paint = Paint()..style = ui.PaintingStyle.stroke;
+    paint.strokeWidth = 1;
+    paint.color = const Color(0x55222222);
+    canvas.drawRect(
+      Rect.fromLTWH(position.dx, position.dy,
+          imageSize.width, imageSize.height),
+      paint);*/
+
     for (var x = 0; x < _qr!.moduleCount; x++) {
       for (var y = 0; y < _qr!.moduleCount; y++) {
         // draw the finder patterns independently
@@ -220,6 +232,7 @@ class QrPainter extends CustomPainter {
         // paint a pixel
         left = paintMetrics.inset + (x * (paintMetrics.pixelSize + gap));
         top = paintMetrics.inset + (y * (paintMetrics.pixelSize + gap));
+
         var pixelHTweak = 0.0;
         var pixelVTweak = 0.0;
         if (gapless && _hasAdjacentHorizontalPixel(x, y, _qr!.moduleCount)) {
@@ -234,6 +247,10 @@ class QrPainter extends CustomPainter {
           paintMetrics.pixelSize + pixelHTweak,
           paintMetrics.pixelSize + pixelVTweak,
         );
+
+        //If dataModule overlaps innerContent (image) area -> don't paint it
+        // if(imageRect.overlaps(squareRect)) continue;
+
         if (dataModuleStyle.dataModuleShape == QrDataModuleShape.square) {
           canvas.drawRect(squareRect, paint);
         } else {
@@ -245,18 +262,18 @@ class QrPainter extends CustomPainter {
     }
 
     if (embeddedImage != null) {
+      // draw the image overlay.
       final originalSize = Size(
         embeddedImage!.width.toDouble(),
         embeddedImage!.height.toDouble(),
       );
       final requestedSize =
-          embeddedImageStyle != null ? embeddedImageStyle!.size : null;
+      embeddedImageStyle != null ? embeddedImageStyle!.size : null;
       final imageSize = _scaledAspectSize(size, originalSize, requestedSize);
       final position = Offset(
         (size.width - imageSize.width) / 2.0,
         (size.height - imageSize.height) / 2.0,
       );
-      // draw the image overlay.
       _drawImageOverlay(canvas, position, imageSize, embeddedImageStyle);
     }
   }
